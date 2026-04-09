@@ -36,13 +36,20 @@
   .col-heads, .data-row { display: grid; gap: 8px; align-items: center; margin-bottom: 8px; }
   .sub-grid { grid-template-columns: 30px 1fr 120px 100px 30px; }
   .bill-grid { grid-template-columns: 30px 1fr 120px 100px; }
-  .save-grid { grid-template-columns: 1fr 110px 110px 30px; }
-  .cc-grid { grid-template-columns: 30px 1fr 70px 100px 100px 110px 30px; }
+  .save-grid { grid-template-columns: 1fr 60px 100px 100px 100px 30px; }
+  .cc-grid { grid-template-columns: 30px 1fr 80px 100px 100px 90px 90px 30px; }
 
-  .col-head { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+  .col-head { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
   input:not([type="checkbox"]) { width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
   .paid input { text-decoration: line-through; opacity: 0.5; }
   .remove-row { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 20px; font-weight: bold; }
+  
+  .pay-full-btn { background: #e2ddd7; border: none; font-size: 9px; padding: 4px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+  .pay-full-btn:hover { background: var(--accent); color: white; }
+
+  .util-badge, .save-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; background: #eee; text-align: center; }
+  .util-good, .save-good { background: #e8f0ea; color: #2d5a3d; }
+  .util-bad { background: #fdf0ee; color: #c0392b; }
 
   .metric-block { padding: 15px; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); margin-bottom: 10px; }
   .metric-value { font-family: 'DM Serif Display', serif; font-size: 28px; }
@@ -82,17 +89,27 @@
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="card-title">Savings</span><button class="add-btn" onclick="addRow('saveRows')">+</button></div>
+      <div class="card-header">
+        <span class="card-title">Savings Goals</span>
+        <button class="add-btn" onclick="addRow('saveRows')">+</button>
+      </div>
       <div class="table-wrap">
-        <div class="col-heads save-grid"><span class="col-head">Account/Goal</span><span class="col-head">Start Bal</span><span class="col-head">Monthly Deposit</span></div>
+        <div class="col-heads save-grid">
+          <span class="col-head">Goal</span><span class="col-head">Done</span><span class="col-head">Target</span><span class="col-head">Start Bal</span><span class="col-head">Deposit</span>
+        </div>
         <div id="saveRows"></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="card-title">Credit Cards</span><button class="add-btn" onclick="addRow('ccRows')">+</button></div>
+      <div class="card-header">
+        <span class="card-title">Credit Cards</span>
+        <button class="add-btn" onclick="addRow('ccRows')">+</button>
+      </div>
       <div class="table-wrap">
-        <div class="col-heads cc-grid"><span></span><span class="col-head">Card</span><span class="col-head">Int %</span><span class="col-head">Total Bal</span><span class="col-head">Payment</span><span class="col-head">Date</span></div>
+        <div class="col-heads cc-grid">
+          <span></span><span class="col-head">Card</span><span class="col-head">Util%</span><span class="col-head">Limit</span><span class="col-head">Balance</span><span class="col-head">Payment</span><span class="col-head">Date</span>
+        </div>
         <div id="ccRows"></div>
       </div>
     </div>
@@ -107,7 +124,7 @@
           <input type="number" id="incomeInput" oninput="recalc()" style="font-size: 20px; height: 45px; margin-top: 5px;">
         </div>
         <div class="metric-block">
-          <div class="col-head">Total Expenses</div>
+          <div class="col-head">Total Outgoing</div>
           <div class="metric-value" id="totalExp">$0.00</div>
         </div>
         <div class="metric-block">
@@ -129,28 +146,41 @@ function init() {
   loadMonth();
 }
 
+function payFull(btn) {
+  const row = btn.closest('.data-row');
+  row.querySelector('.a-in').value = row.querySelector('.bal-in').value;
+  row.querySelector('input[type="checkbox"]').checked = true;
+  recalc();
+}
+
 function addRow(id, data = null) {
   const container = document.getElementById(id);
   const row = document.createElement('div');
   row.className = 'data-row ' + id.replace('Rows', '-grid');
   
   if (id === 'subRows') {
-    row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.paid?'checked':''}>
-      <input type="text" class="n-in" placeholder="Netflix" value="${data?.n||''}">
-      <input type="date" class="d-in" value="${data?.d||''}">
+    row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
+      <input type="text" placeholder="Netflix" value="${data?.n||''}">
+      <input type="date" value="${data?.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'saveRows') {
-    row.innerHTML = `<input type="text" class="n-in" placeholder="Savings" value="${data?.n||''}">
-      <input type="number" value="${data?.s||''}">
-      <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
+    row.innerHTML = `<input type="text" placeholder="Emergency Fund" value="${data?.n||''}">
+      <span class="save-badge">0%</span>
+      <input type="number" class="tar-in" placeholder="Goal $" oninput="recalc()" value="${data?.t||''}">
+      <input type="number" class="start-in" placeholder="Current" oninput="recalc()" value="${data?.s||''}">
+      <input type="number" class="a-in" placeholder="Deposit" oninput="recalc()" value="${data?.a||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'ccRows') {
-    row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.paid?'checked':''}>
-      <input type="text" class="n-in" placeholder="Visa" value="${data?.n||''}">
-      <input type="number" value="${data?.i||''}">
-      <input type="number" value="${data?.b||''}">
-      <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
+    row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
+      <input type="text" placeholder="Visa" value="${data?.n||''}">
+      <span class="util-badge">0%</span>
+      <input type="number" class="lim-in" placeholder="Limit" oninput="recalc()" value="${data?.l||''}">
+      <input type="number" class="bal-in" placeholder="Balance" oninput="recalc()" value="${data?.b||''}">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <input type="number" class="a-in" placeholder="Pay" oninput="recalc()" value="${data?.a||''}">
+        <button class="pay-full-btn" onclick="payFull(this)">Pay in Full</button>
+      </div>
       <input type="date" value="${data?.d||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   }
@@ -158,12 +188,47 @@ function addRow(id, data = null) {
   recalc();
 }
 
+function recalc() {
+  let total = 0;
+  document.querySelectorAll('.a-in').forEach(i => total += parseFloat(i.value) || 0);
+  const inc = parseFloat(document.getElementById('incomeInput').value) || 0;
+  
+  document.getElementById('totalExp').textContent = '$' + total.toFixed(2);
+  document.getElementById('balanceText').textContent = '$' + (inc - total).toFixed(2);
+  
+  document.querySelectorAll('.data-row').forEach(r => {
+    const c = r.querySelector('input[type="checkbox"]');
+    if (c) r.classList.toggle('paid', c.checked);
+    
+    // Credit Card Logic
+    const lim = parseFloat(r.querySelector('.lim-in')?.value) || 0;
+    const bal = parseFloat(r.querySelector('.bal-in')?.value) || 0;
+    const utBadge = r.querySelector('.util-badge');
+    if (utBadge && lim > 0) {
+      const util = Math.round((bal / lim) * 100);
+      utBadge.textContent = util + '%';
+      utBadge.className = 'util-badge ' + (util > 30 ? 'util-bad' : 'util-good');
+    }
+
+    // Savings Logic
+    const tar = parseFloat(r.querySelector('.tar-in')?.value) || 0;
+    const start = parseFloat(r.querySelector('.start-in')?.value) || 0;
+    const dep = parseFloat(r.querySelector('.a-in')?.value) || 0;
+    const svBadge = r.querySelector('.save-badge');
+    if (svBadge && tar > 0) {
+      const progress = Math.min(Math.round(((start + dep) / tar) * 100), 100);
+      svBadge.textContent = progress + '%';
+      if (progress >= 100) svBadge.classList.add('save-good');
+    }
+  });
+}
+
 function loadMonth() {
   document.getElementById('monthLabel').textContent = `${MONTHS[curM]} ${curY}`;
   const saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
   document.getElementById('incomeInput').value = saved.inc || '';
   
-  const bRows = document.getElementById('billRows'); bRows.innerHTML = '';
+  document.getElementById('billRows').innerHTML = '';
   FIXED_BILLS.forEach((name, i) => {
     const s = (saved.bills || [])[i] || {};
     const r = document.createElement('div'); r.className = 'data-row bill-grid';
@@ -171,7 +236,7 @@ function loadMonth() {
       <input type="text" value="${name}" readonly style="border:none;background:none;font-weight:bold;">
       <input type="date" value="${s.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${s.a||''}">`;
-    bRows.appendChild(r);
+    document.getElementById('billRows').appendChild(r);
   });
 
   ['subRows', 'saveRows', 'ccRows'].forEach(id => {
@@ -183,24 +248,24 @@ function loadMonth() {
   recalc();
 }
 
-function recalc() {
-  let total = 0;
-  document.querySelectorAll('.a-in').forEach(i => total += parseFloat(i.value) || 0);
-  const inc = parseFloat(document.getElementById('incomeInput').value) || 0;
-  document.getElementById('totalExp').textContent = '$' + total.toFixed(2);
-  document.getElementById('balanceText').textContent = '$' + (inc - total).toFixed(2);
-  document.querySelectorAll('.data-row').forEach(r => {
-    const c = r.querySelector('input[type="checkbox"]');
-    if (c) r.classList.toggle('paid', c.checked);
-  });
-}
-
 function saveData() {
   const data = {
     inc: document.getElementById('incomeInput').value,
     subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r => ({p:r.children[0].checked, n:r.children[1].value, d:r.children[2].value, a:r.children[3].value})),
-    saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r => ({n:r.children[0].value, s:r.children[1].value, a:r.children[2].value})),
-    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r => ({p:r.children[0].checked, n:r.children[1].value, i:r.children[2].value, b:r.children[3].value, a:r.children[4].value, d:r.children[5].value})),
+    saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r => ({
+      n:r.querySelector('input[type="text"]').value,
+      t:r.querySelector('.tar-in').value,
+      s:r.querySelector('.start-in').value,
+      a:r.querySelector('.a-in').value
+    })),
+    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r => ({
+      p:r.querySelector('input[type="checkbox"]').checked,
+      n:r.querySelector('input[type="text"]').value,
+      l:r.querySelector('.lim-in').value,
+      b:r.querySelector('.bal-in').value,
+      a:r.querySelector('.a-in').value,
+      d:r.querySelector('input[type="date"]').value
+    })),
     bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r => ({p:r.children[0].checked, d:r.children[2].value, a:r.children[3].value}))
   };
   localStorage.setItem(`budget_${curY}_${curM}`, JSON.stringify(data));
@@ -208,7 +273,6 @@ function saveData() {
 }
 
 function changeMonth(v) { curM += v; if (curM>11){curM=0;curY++} if (curM<0){curM=11;curY--} loadMonth(); }
-
 init();
 </script>
 </body>
