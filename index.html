@@ -36,18 +36,18 @@
   .col-heads, .data-row { display: grid; gap: 8px; align-items: center; margin-bottom: 8px; }
   .sub-grid { grid-template-columns: 30px 1fr 120px 100px 30px; }
   .bill-grid { grid-template-columns: 30px 1fr 120px 100px; }
-  .save-grid { grid-template-columns: 1fr 60px 100px 100px 100px 30px; }
-  .cc-grid { grid-template-columns: 30px 1fr 80px 100px 100px 90px 90px 30px; }
+  .save-grid { grid-template-columns: 1fr 60px 90px 90px 90px 30px; }
+  .cc-grid { grid-template-columns: 30px 1fr 60px 90px 90px 60px 100px 90px 30px; }
 
-  .col-head { font-size: 9px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
-  input:not([type="checkbox"]) { width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .col-head { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
+  input:not([type="checkbox"]) { width: 100%; height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; }
   .paid input { text-decoration: line-through; opacity: 0.5; }
   .remove-row { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 20px; font-weight: bold; }
   
-  .pay-full-btn { background: #e2ddd7; border: none; font-size: 9px; padding: 4px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; }
+  .pay-full-btn { background: #e2ddd7; border: none; font-size: 8px; padding: 3px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; margin-top: 2px; }
   .pay-full-btn:hover { background: var(--accent); color: white; }
 
-  .util-badge, .save-badge { font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 10px; background: #eee; text-align: center; }
+  .util-badge, .save-badge { font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 8px; background: #eee; text-align: center; }
   .util-good, .save-good { background: #e8f0ea; color: #2d5a3d; }
   .util-bad { background: #fdf0ee; color: #c0392b; }
 
@@ -89,27 +89,17 @@
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Savings Goals</span>
-        <button class="add-btn" onclick="addRow('saveRows')">+</button>
-      </div>
+      <div class="card-header"><span class="card-title">Savings Goals</span><button class="add-btn" onclick="addRow('saveRows')">+</button></div>
       <div class="table-wrap">
-        <div class="col-heads save-grid">
-          <span class="col-head">Goal</span><span class="col-head">Done</span><span class="col-head">Target</span><span class="col-head">Start Bal</span><span class="col-head">Deposit</span>
-        </div>
+        <div class="col-heads save-grid"><span class="col-head">Goal</span><span class="col-head">Progress</span><span class="col-head">Target</span><span class="col-head">Current</span><span class="col-head">Deposit</span></div>
         <div id="saveRows"></div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Credit Cards</span>
-        <button class="add-btn" onclick="addRow('ccRows')">+</button>
-      </div>
+      <div class="card-header"><span class="card-title">Credit Cards</span><button class="add-btn" onclick="addRow('ccRows')">+</button></div>
       <div class="table-wrap">
-        <div class="col-heads cc-grid">
-          <span></span><span class="col-head">Card</span><span class="col-head">Util%</span><span class="col-head">Limit</span><span class="col-head">Balance</span><span class="col-head">Payment</span><span class="col-head">Date</span>
-        </div>
+        <div class="col-heads cc-grid"><span></span><span class="col-head">Card</span><span class="col-head">Util%</span><span class="col-head">Limit</span><span class="col-head">Balance</span><span class="col-head">Int%</span><span class="col-head">Payment</span><span class="col-head">Date</span></div>
         <div id="ccRows"></div>
       </div>
     </div>
@@ -117,7 +107,7 @@
 
   <div class="right-col">
     <div class="card">
-      <div class="card-header"><span class="card-title">Monthly Summary</span></div>
+      <div class="card-header"><span class="card-title">Summary</span></div>
       <div class="table-wrap">
         <div class="metric-block">
           <div class="col-head">Monthly Income</div>
@@ -137,7 +127,7 @@
 </div>
 
 <script>
-const FIXED_BILLS = ["Rent", "Electricity", "Water", "Gas", "WiFi", "Phone", "Car Insurance"];
+const FIXED_BILLS = ["Rent/Mortgage", "Electricity", "Water", "Gas", "WiFi", "Phone", "Car Insurance"];
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 let curY, curM;
 
@@ -160,26 +150,27 @@ function addRow(id, data = null) {
   
   if (id === 'subRows') {
     row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
-      <input type="text" placeholder="Netflix" value="${data?.n||''}">
+      <input type="text" placeholder="Service" value="${data?.n||''}">
       <input type="date" value="${data?.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'saveRows') {
-    row.innerHTML = `<input type="text" placeholder="Emergency Fund" value="${data?.n||''}">
+    row.innerHTML = `<input type="text" placeholder="Goal Name" value="${data?.n||''}">
       <span class="save-badge">0%</span>
-      <input type="number" class="tar-in" placeholder="Goal $" oninput="recalc()" value="${data?.t||''}">
-      <input type="number" class="start-in" placeholder="Current" oninput="recalc()" value="${data?.s||''}">
-      <input type="number" class="a-in" placeholder="Deposit" oninput="recalc()" value="${data?.a||''}">
+      <input type="number" class="tar-in" placeholder="Target" oninput="recalc()" value="${data?.t||''}">
+      <input type="number" class="start-in" placeholder="Start" oninput="recalc()" value="${data?.s||''}">
+      <input type="number" class="a-in" placeholder="Add" oninput="recalc()" value="${data?.a||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'ccRows') {
     row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
-      <input type="text" placeholder="Visa" value="${data?.n||''}">
+      <input type="text" placeholder="Card" value="${data?.n||''}">
       <span class="util-badge">0%</span>
       <input type="number" class="lim-in" placeholder="Limit" oninput="recalc()" value="${data?.l||''}">
       <input type="number" class="bal-in" placeholder="Balance" oninput="recalc()" value="${data?.b||''}">
-      <div style="display:flex;flex-direction:column;gap:2px">
+      <input type="number" placeholder="%" value="${data?.i||''}">
+      <div style="display:flex;flex-direction:column;">
         <input type="number" class="a-in" placeholder="Pay" oninput="recalc()" value="${data?.a||''}">
-        <button class="pay-full-btn" onclick="payFull(this)">Pay in Full</button>
+        <button class="pay-full-btn" onclick="payFull(this)">Pay Full</button>
       </div>
       <input type="date" value="${data?.d||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
@@ -192,7 +183,6 @@ function recalc() {
   let total = 0;
   document.querySelectorAll('.a-in').forEach(i => total += parseFloat(i.value) || 0);
   const inc = parseFloat(document.getElementById('incomeInput').value) || 0;
-  
   document.getElementById('totalExp').textContent = '$' + total.toFixed(2);
   document.getElementById('balanceText').textContent = '$' + (inc - total).toFixed(2);
   
@@ -200,25 +190,23 @@ function recalc() {
     const c = r.querySelector('input[type="checkbox"]');
     if (c) r.classList.toggle('paid', c.checked);
     
-    // Credit Card Logic
     const lim = parseFloat(r.querySelector('.lim-in')?.value) || 0;
     const bal = parseFloat(r.querySelector('.bal-in')?.value) || 0;
-    const utBadge = r.querySelector('.util-badge');
-    if (utBadge && lim > 0) {
+    const utB = r.querySelector('.util-badge');
+    if (utB && lim > 0) {
       const util = Math.round((bal / lim) * 100);
-      utBadge.textContent = util + '%';
-      utBadge.className = 'util-badge ' + (util > 30 ? 'util-bad' : 'util-good');
+      utB.textContent = util + '%';
+      utB.className = 'util-badge ' + (util > 30 ? 'util-bad' : 'util-good');
     }
 
-    // Savings Logic
     const tar = parseFloat(r.querySelector('.tar-in')?.value) || 0;
     const start = parseFloat(r.querySelector('.start-in')?.value) || 0;
     const dep = parseFloat(r.querySelector('.a-in')?.value) || 0;
-    const svBadge = r.querySelector('.save-badge');
-    if (svBadge && tar > 0) {
-      const progress = Math.min(Math.round(((start + dep) / tar) * 100), 100);
-      svBadge.textContent = progress + '%';
-      if (progress >= 100) svBadge.classList.add('save-good');
+    const svB = r.querySelector('.save-badge');
+    if (svB && tar > 0) {
+      const prog = Math.min(Math.round(((start + dep) / tar) * 100), 100);
+      svB.textContent = prog + '%';
+      if (prog >= 100) svB.classList.add('save-good');
     }
   });
 }
@@ -228,7 +216,7 @@ function loadMonth() {
   const saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
   document.getElementById('incomeInput').value = saved.inc || '';
   
-  document.getElementById('billRows').innerHTML = '';
+  const bR = document.getElementById('billRows'); bR.innerHTML = '';
   FIXED_BILLS.forEach((name, i) => {
     const s = (saved.bills || [])[i] || {};
     const r = document.createElement('div'); r.className = 'data-row bill-grid';
@@ -236,14 +224,17 @@ function loadMonth() {
       <input type="text" value="${name}" readonly style="border:none;background:none;font-weight:bold;">
       <input type="date" value="${s.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${s.a||''}">`;
-    document.getElementById('billRows').appendChild(r);
+    bR.appendChild(r);
   });
 
   ['subRows', 'saveRows', 'ccRows'].forEach(id => {
     document.getElementById(id).innerHTML = '';
     const list = id === 'subRows' ? saved.subs : (id === 'saveRows' ? saved.saves : saved.ccs);
-    if (list && list.length) list.forEach(item => addRow(id, item));
-    else addRow(id);
+    if (list && list.length) {
+       list.forEach(item => addRow(id, item));
+    } else {
+       addRow(id); // Always start with 1 clean row if empty
+    }
   });
   recalc();
 }
@@ -251,7 +242,12 @@ function loadMonth() {
 function saveData() {
   const data = {
     inc: document.getElementById('incomeInput').value,
-    subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r => ({p:r.children[0].checked, n:r.children[1].value, d:r.children[2].value, a:r.children[3].value})),
+    subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r => ({
+      p:r.querySelector('input[type="checkbox"]').checked,
+      n:r.querySelector('input[type="text"]').value,
+      d:r.querySelector('input[type="date"]').value,
+      a:r.querySelector('.a-in').value
+    })),
     saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r => ({
       n:r.querySelector('input[type="text"]').value,
       t:r.querySelector('.tar-in').value,
@@ -263,13 +259,18 @@ function saveData() {
       n:r.querySelector('input[type="text"]').value,
       l:r.querySelector('.lim-in').value,
       b:r.querySelector('.bal-in').value,
+      i:r.querySelector('input[placeholder="%"]').value,
       a:r.querySelector('.a-in').value,
       d:r.querySelector('input[type="date"]').value
     })),
-    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r => ({p:r.children[0].checked, d:r.children[2].value, a:r.children[3].value}))
+    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r => ({
+      p:r.querySelector('input[type="checkbox"]').checked,
+      d:r.querySelector('input[type="date"]').value,
+      a:r.querySelector('.a-in').value
+    }))
   };
   localStorage.setItem(`budget_${curY}_${curM}`, JSON.stringify(data));
-  alert('Saved!');
+  alert('Dashboard Saved!');
 }
 
 function changeMonth(v) { curM += v; if (curM>11){curM=0;curY++} if (curM<0){curM=11;curY--} loadMonth(); }
