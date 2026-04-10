@@ -9,7 +9,7 @@
   :root {
     --bg: #f5f2ee; --surface: #ffffff; --surface2: #faf8f5; --border: #e2ddd7;
     --text: #1a1714; --muted: #7a7570; --accent: #2d5a3d; --accent-light: #e8f0ea;
-    --danger: #c0392b; --radius: 10px; --radius-sm: 6px;
+    --danger: #c0392b; --warning-bg: #fff5f5; --radius: 10px; --radius-sm: 6px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 50px; }
@@ -26,8 +26,6 @@
   .month-label { font-family: 'DM Serif Display', serif; padding: 8px 20px; min-width: 160px; text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 
   .main-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; align-items: start; }
-  
-  /* Sticky Summary Logic */
   .right-col { position: sticky; top: 80px; }
 
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
@@ -37,26 +35,32 @@
   .add-btn { background: var(--accent); color: #fff; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-weight: bold; font-size: 18px; }
 
   .table-wrap { padding: 12px 18px; }
-  .col-heads, .data-row { display: grid; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .col-heads, .data-row { display: grid; gap: 8px; align-items: center; margin-bottom: 8px; border-radius: 4px; transition: background 0.3s; }
   .sub-grid { grid-template-columns: 30px 1fr 120px 100px 30px; }
   .bill-grid { grid-template-columns: 30px 1fr 120px 100px; }
   .save-grid { grid-template-columns: 1fr 60px 90px 90px 90px 30px; }
   .cc-grid { grid-template-columns: 30px 1fr 60px 90px 90px 60px 100px 90px 30px; }
 
   .col-head { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
-  input:not([type="checkbox"]) { width: 100%; height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; }
-  .paid input { text-decoration: line-through; opacity: 0.5; }
-  .remove-row { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 20px; font-weight: bold; }
+  input:not([type="checkbox"]):not([type="radio"]) { width: 100%; height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; }
   
-  .pay-full-btn { background: #e2ddd7; border: none; font-size: 8px; padding: 3px; border-radius: 4px; cursor: pointer; font-weight: bold; white-space: nowrap; margin-top: 2px; }
-  .pay-full-btn:hover { background: var(--accent); color: white; }
+  /* Row Status Colors */
+  .paid { opacity: 0.6; }
+  .paid input { text-decoration: line-through; }
+  .overdue { background: var(--warning-bg) !important; border: 1px solid #ffcccc; }
+  
+  .remove-row { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 20px; font-weight: bold; }
+  .pay-full-btn { background: #e2ddd7; border: none; font-size: 8px; padding: 3px; border-radius: 4px; cursor: pointer; font-weight: bold; }
 
-  .util-badge, .save-badge { font-size: 9px; font-weight: bold; padding: 2px 4px; border-radius: 8px; background: #eee; text-align: center; }
-  .util-good, .save-good { background: #e8f0ea; color: #2d5a3d; }
-  .util-bad { background: #fdf0ee; color: #c0392b; }
-
+  /* Summary Elements */
+  .progress-container { background: #eee; border-radius: 10px; height: 12px; margin: 10px 0; overflow: hidden; }
+  .progress-bar { background: var(--accent); height: 100%; transition: width 0.5s ease; }
   .metric-block { padding: 15px; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); margin-bottom: 10px; }
   .metric-value { font-family: 'DM Serif Display', serif; font-size: 28px; }
+  .buffer-text { font-size: 11px; color: var(--muted); font-style: italic; margin-top: 4px; }
+  
+  .radio-group { display: flex; gap: 10px; margin-top: 10px; }
+  .radio-option { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
   .btn-accent { background: var(--accent); color: white; padding: 10px 20px; border-radius: var(--radius-sm); border: none; cursor: pointer; font-weight: bold; }
 </style>
 </head>
@@ -111,18 +115,32 @@
 
   <div class="right-col">
     <div class="card">
-      <div class="card-header"><span class="card-title">Summary</span></div>
+      <div class="card-header"><span class="card-title">Monthly Summary</span></div>
       <div class="table-wrap">
         <div class="metric-block">
-          <div class="col-head">Monthly Income</div>
+          <div class="col-head">Budget Usage</div>
+          <div class="progress-container"><div class="progress-bar" id="budgetBar" style="width: 0%"></div></div>
+          <div id="usageText" style="font-size: 11px; font-weight: bold;">0% of income used</div>
+        </div>
+        
+        <div class="metric-block">
+          <div class="col-head">Check Amount</div>
           <input type="number" id="incomeInput" oninput="recalc()" style="font-size: 20px; height: 45px; margin-top: 5px;">
+          <div class="radio-group">
+            <label class="radio-option"><input type="radio" name="freq" value="1" checked onchange="recalc()"> Monthly</label>
+            <label class="radio-option"><input type="radio" name="freq" value="2" onchange="recalc()"> Bi-Weekly</label>
+            <label class="radio-option"><input type="radio" name="freq" value="4" onchange="recalc()"> Weekly</label>
+          </div>
         </div>
+
         <div class="metric-block">
-          <div class="col-head">Total Outgoing</div>
-          <div class="metric-value" id="totalExp">$0.00</div>
+          <div class="col-head">Safety Buffer (5%)</div>
+          <div class="metric-value" id="bufferAmt" style="font-size: 20px; color: var(--muted);">$0.00</div>
+          <div class="buffer-text">Automatic rainy-day protection</div>
         </div>
+
         <div class="metric-block">
-          <div class="col-head">Remaining</div>
+          <div class="col-head">Remaining After Buffer</div>
           <div class="metric-value" id="balanceText">$0.00</div>
         </div>
       </div>
@@ -155,7 +173,7 @@ function addRow(id, data = null) {
   if (id === 'subRows') {
     row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
       <input type="text" placeholder="Service" value="${data?.n||''}">
-      <input type="date" value="${data?.d||''}">
+      <input type="date" class="date-in" onchange="recalc()" value="${data?.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'saveRows') {
@@ -176,7 +194,7 @@ function addRow(id, data = null) {
         <input type="number" class="a-in" placeholder="Pay" oninput="recalc()" value="${data?.a||''}">
         <button class="pay-full-btn" onclick="payFull(this)">Pay Full</button>
       </div>
-      <input type="date" value="${data?.d||''}">
+      <input type="date" class="date-in" onchange="recalc()" value="${data?.d||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   }
   container.appendChild(row);
@@ -184,33 +202,37 @@ function addRow(id, data = null) {
 }
 
 function recalc() {
-  let total = 0;
-  document.querySelectorAll('.a-in').forEach(i => total += parseFloat(i.value) || 0);
-  const inc = parseFloat(document.getElementById('incomeInput').value) || 0;
-  document.getElementById('totalExp').textContent = '$' + total.toFixed(2);
-  document.getElementById('balanceText').textContent = '$' + (inc - total).toFixed(2);
+  let totalOut = 0;
+  document.querySelectorAll('.a-in').forEach(i => totalOut += parseFloat(i.value) || 0);
   
+  const checkAmt = parseFloat(document.getElementById('incomeInput').value) || 0;
+  const freq = parseInt(document.querySelector('input[name="freq"]:checked').value);
+  const monthlyInc = checkAmt * freq;
+  const buffer = monthlyInc * 0.05;
+  
+  // Update Progress Bar
+  const usagePct = monthlyInc > 0 ? Math.min(Math.round((totalOut / monthlyInc) * 100), 100) : 0;
+  document.getElementById('budgetBar').style.width = usagePct + '%';
+  document.getElementById('usageText').textContent = usagePct + '% of income allocated';
+  
+  document.getElementById('bufferAmt').textContent = '$' + buffer.toFixed(2);
+  document.getElementById('balanceText').textContent = '$' + (monthlyInc - totalOut - buffer).toFixed(2);
+  
+  // Status Checks (Overdue & Paid)
+  const today = new Date().toISOString().split('T')[0];
   document.querySelectorAll('.data-row').forEach(r => {
-    const c = r.querySelector('input[type="checkbox"]');
-    if (c) r.classList.toggle('paid', c.checked);
+    const cb = r.querySelector('input[type="checkbox"]');
+    const dt = r.querySelector('.date-in')?.value;
     
+    r.classList.toggle('paid', cb?.checked);
+    r.classList.toggle('overdue', dt && dt < today && !cb?.checked);
+    
+    // Logic for individual badges (Util/Savings) remains the same
     const lim = parseFloat(r.querySelector('.lim-in')?.value) || 0;
     const bal = parseFloat(r.querySelector('.bal-in')?.value) || 0;
-    const utB = r.querySelector('.util-badge');
-    if (utB && lim > 0) {
+    if (r.querySelector('.util-badge') && lim > 0) {
       const util = Math.round((bal / lim) * 100);
-      utB.textContent = util + '%';
-      utB.className = 'util-badge ' + (util > 30 ? 'util-bad' : 'util-good');
-    }
-
-    const tar = parseFloat(r.querySelector('.tar-in')?.value) || 0;
-    const start = parseFloat(r.querySelector('.start-in')?.value) || 0;
-    const dep = parseFloat(r.querySelector('.a-in')?.value) || 0;
-    const svB = r.querySelector('.save-badge');
-    if (svB && tar > 0) {
-      const prog = Math.min(Math.round(((start + dep) / tar) * 100), 100);
-      svB.textContent = prog + '%';
-      if (prog >= 100) svB.classList.add('save-good');
+      r.querySelector('.util-badge').textContent = util + '%';
     }
   });
 }
@@ -220,45 +242,38 @@ function loadMonth() {
   let saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
   
   if (Object.keys(saved).length === 0) {
-    let prevM = curM - 1;
-    let prevY = curY;
+    let prevM = curM - 1, prevY = curY;
     if (prevM < 0) { prevM = 11; prevY--; }
-    const prevSaved = JSON.parse(localStorage.getItem(`budget_${prevY}_${prevM}`) || '{}');
-    
-    if (Object.keys(prevSaved).length > 0) {
-      saved = {
-        inc: prevSaved.inc,
-        subs: (prevSaved.subs || []).map(s => ({...s, p: false, d: ""})),
-        saves: (prevSaved.saves || []).map(s => ({...s, a: ""})),
-        ccs: (prevSaved.ccs || []).map(c => ({...c, p: false, a: "", d: ""})),
-        bills: (prevSaved.bills || []).map(b => ({...b, p: false, d: ""}))
+    const prev = JSON.parse(localStorage.getItem(`budget_${prevY}_${prevM}`) || '{}');
+    if (Object.keys(prev).length > 0) {
+      saved = { 
+        inc: prev.inc, freq: prev.freq,
+        subs: (prev.subs||[]).map(s=>({...s, p:false, d:''})),
+        saves: (prev.saves||[]).map(s=>({...s, a:''})),
+        ccs: (prev.ccs||[]).map(c=>({...c, p:false, a:'', d:''})),
+        bills: (prev.bills||[]).map(b=>({...b, p:false, d:''}))
       };
     }
   }
 
   document.getElementById('incomeInput').value = saved.inc || '';
+  if (saved.freq) document.querySelector(`input[name="freq"][value="${saved.freq}"]`).checked = true;
   
   const bR = document.getElementById('billRows'); bR.innerHTML = '';
-  FIXED_BILLS.forEach((name, i) => {
+  FIXED_BILLS.forEach((n, i) => {
     const s = (saved.bills || [])[i] || {};
     const r = document.createElement('div'); r.className = 'data-row bill-grid';
     r.innerHTML = `<input type="checkbox" onchange="recalc()" ${s.p?'checked':''}>
-      <input type="text" value="${name}" readonly style="border:none;background:none;font-weight:bold;">
-      <input type="date" value="${s.d||''}">
+      <input type="text" value="${n}" readonly style="border:none;background:none;font-weight:bold;">
+      <input type="date" class="date-in" onchange="recalc()" value="${s.d||''}">
       <input type="number" class="a-in" oninput="recalc()" value="${s.a||''}">`;
     bR.appendChild(r);
   });
 
   ['subRows', 'saveRows', 'ccRows'].forEach(id => {
-    const container = document.getElementById(id);
-    container.innerHTML = '';
-    const list = id === 'subRows' ? saved.subs : (id === 'saveRows' ? saved.saves : saved.ccs);
-    
-    if (list && list.length > 0) {
-      list.forEach(item => addRow(id, item));
-    } else {
-      addRow(id);
-    }
+    const c = document.getElementById(id); c.innerHTML = '';
+    const list = id==='subRows'?saved.subs : (id==='saveRows'?saved.saves:saved.ccs);
+    if (list?.length) list.forEach(item => addRow(id, item)); else addRow(id);
   });
   recalc();
 }
@@ -266,43 +281,17 @@ function loadMonth() {
 function saveData() {
   const data = {
     inc: document.getElementById('incomeInput').value,
-    subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r => ({
-      p:r.querySelector('input[type="checkbox"]').checked,
-      n:r.querySelector('input[type="text"]').value,
-      d:r.querySelector('input[type="date"]').value,
-      a:r.querySelector('.a-in').value
-    })),
-    saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r => ({
-      n:r.querySelector('input[type="text"]').value,
-      t:r.querySelector('.tar-in').value,
-      s:r.querySelector('.start-in').value,
-      a:r.querySelector('.a-in').value
-    })),
-    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r => ({
-      p:r.querySelector('input[type="checkbox"]').checked,
-      n:r.querySelector('input[type="text"]').value,
-      l:r.querySelector('.lim-in').value,
-      b:r.querySelector('.bal-in').value,
-      i:r.querySelector('input[placeholder="%"]').value,
-      a:r.querySelector('.a-in').value,
-      d:r.querySelector('input[type="date"]').value
-    })),
-    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r => ({
-      p:r.querySelector('input[type="checkbox"]').checked,
-      d:r.querySelector('input[type="date"]').value,
-      a:r.querySelector('.a-in').value
-    }))
+    freq: document.querySelector('input[name="freq"]:checked').value,
+    subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value})),
+    saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r=>({n:r.querySelector('input[type="text"]').value, t:r.querySelector('.tar-in').value, s:r.querySelector('.start-in').value, a:r.querySelector('.a-in').value})),
+    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, l:r.querySelector('.lim-in').value, b:r.querySelector('.bal-in').value, i:r.querySelector('input[placeholder="%"]').value, a:r.querySelector('.a-in').value, d:r.querySelector('.date-in').value})),
+    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value}))
   };
   localStorage.setItem(`budget_${curY}_${curM}`, JSON.stringify(data));
-  alert('Dashboard Saved!');
+  alert('Changes Committed to Local Storage!');
 }
 
-function changeMonth(v) { 
-  curM += v; 
-  if (curM > 11) { curM = 0; curY++; } 
-  if (curM < 0) { curM = 11; curY--; } 
-  loadMonth(); 
-}
+function changeMonth(v) { curM += v; if (curM > 11) { curM=0; curY++; } if (curM < 0) { curM=11; curY--; } loadMonth(); }
 init();
 </script>
 </body>
