@@ -41,6 +41,7 @@
   .bill-grid { grid-template-columns: 30px 1fr 120px 100px; }
   .save-grid { grid-template-columns: 1fr 60px 80px 80px 80px 80px 30px; }
   .cc-grid { grid-template-columns: 30px 1fr 50px 70px 70px 70px 50px 80px 80px 30px; }
+  .extra-grid { grid-template-columns: 30px 1fr 100px 30px; }
 
   .col-head { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
   input:not([type="checkbox"]):not([type="radio"]) { width: 100%; height: 34px; padding: 0 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 10px; }
@@ -110,6 +111,13 @@
         <div id="ccRows"></div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Extra Spending</span><button class="add-btn" onclick="addRow('extraRows')">+</button></div>
+      <div class="table-wrap">
+        <div class="col-heads extra-grid"><span></span><span class="col-head">Item</span><span class="col-head">Amount</span></div>
+        <div id="extraRows"></div>
+      </div>
+    </div>
   </div>
 
   <div class="right-col">
@@ -151,6 +159,15 @@ let curY, curM;
 function init() {
   const d = new Date(); curY = d.getFullYear(); curM = d.getMonth();
   loadMonth();
+}
+
+function rolloverDate(oldDateStr, targetYear, targetMonth) {
+  if (!oldDateStr) return '';
+  const parts = oldDateStr.split('-');
+  const day = parseInt(parts[2]);
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const safeDay = Math.min(day, lastDay);
+  return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(safeDay).padStart(2, '0')}`;
 }
 
 function payFull(btn) {
@@ -195,6 +212,11 @@ function addRow(id, data = null) {
       </div>
       <input type="date" class="date-in" onchange="recalc()" value="${data?.d||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
+  } else if (id === 'extraRows') {
+    row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
+      <input type="text" placeholder="e.g. Gas" value="${data?.n||''}">
+      <input type="number" class="a-in" oninput="recalc()" value="${data?.a||''}">
+      <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   }
   container.appendChild(row);
   recalc();
@@ -223,7 +245,7 @@ function recalc() {
     
     if (!isSaveRow) {
       r.classList.toggle('paid', cb?.checked);
-      r.classList.toggle('overdue', dt && dt < today && !cb?.checked);
+      if (dt) r.classList.toggle('overdue', dt < today && !cb?.checked);
     }
 
     if (isCCRow) {
@@ -261,22 +283,16 @@ function loadMonth() {
     const prev = JSON.parse(localStorage.getItem(`budget_${pY}_${pM}`) || '{}');
     if (Object.keys(prev).length > 0) {
       saved = { inc: prev.inc, freq: prev.freq,
-        subs: (prev.subs||[]).map(s=>({...s, p:false, d:''})),
-        saves: (prev.saves||[]).map(s=>({
-          n: s.n, t: s.t,
-          s: (parseFloat(s.s)||0) + (parseFloat(s.a)||0) - (parseFloat(s.w)||0),
-          a: '', w: '' 
-        })),
+        subs: (prev.subs||[]).map(s=>({ n: s.n, a: s.a, p: false, d: rolloverDate(s.d, curY, curM) })),
+        saves: (prev.saves||[]).map(s=>({ n: s.n, t: s.t, s: (parseFloat(s.s)||0) + (parseFloat(s.a)||0) - (parseFloat(s.w)||0), a: '', w: '' })),
         ccs: (prev.ccs||[]).map(c=>{
-          const oldBal = parseFloat(c.b) || 0;
-          const spent = parseFloat(c.u) || 0;
-          const paid = parseFloat(c.a) || 0;
-          const apr = (parseFloat(c.i) || 0) / 100;
+          const oldBal = parseFloat(c.b) || 0, spent = parseFloat(c.u) || 0, paid = parseFloat(c.a) || 0, apr = (parseFloat(c.i) || 0) / 100;
           const monthlyInt = ((oldBal + spent) * apr) / 12;
           const newBal = (oldBal + spent + monthlyInt) - paid;
-          return { n: c.n, l: c.l, i: c.i, b: Math.max(0, newBal).toFixed(2), u: '', p: false, a: '', d: '' }
+          return { n: c.n, l: c.l, i: c.i, b: Math.max(0, newBal).toFixed(2), u: '', p: false, a: '', d: rolloverDate(c.d, curY, curM) }
         }),
-        bills: (prev.bills||[]).map(b=>({...b, p:false, d:''}))
+        bills: (prev.bills||[]).map(b=>({ a: b.a, p: false, d: rolloverDate(b.d, curY, curM) })),
+        extras: (prev.extras||[]).map(e=>({ n: e.n, a: e.a, p: false }))
       };
     }
   }
@@ -294,9 +310,9 @@ function loadMonth() {
     bR.appendChild(r);
   });
 
-  ['subRows', 'saveRows', 'ccRows'].forEach(id => {
+  ['subRows', 'saveRows', 'ccRows', 'extraRows'].forEach(id => {
     const c = document.getElementById(id); c.innerHTML = '';
-    const list = id==='subRows'?saved.subs : (id==='saveRows'?saved.saves:saved.ccs);
+    const list = id==='subRows'?saved.subs : (id==='saveRows'?saved.saves : (id==='ccRows'?saved.ccs : saved.extras));
     if (list?.length) list.forEach(item => addRow(id, item)); else addRow(id);
   });
   recalc();
@@ -309,7 +325,8 @@ function saveData() {
     subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value})),
     saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r=>({n:r.querySelector('input[type="text"]').value, t:r.querySelector('.tar-in').value, s:r.querySelector('.start-in').value, a:r.querySelector('.a-in').value, w:r.querySelector('.withdraw-in').value})),
     ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, l:r.querySelector('.lim-in').value, b:r.querySelector('.bal-in').value, u:r.querySelector('.spent-in').value, i:r.querySelector('.int-in').value, a:r.querySelector('.a-in').value, d:r.querySelector('.date-in').value})),
-    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value}))
+    bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value})),
+    extras: Array.from(document.querySelectorAll('#extraRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, a:r.querySelector('.a-in').value}))
   };
   localStorage.setItem(`budget_${curY}_${curM}`, JSON.stringify(data));
   alert('Data Saved Locally!');
