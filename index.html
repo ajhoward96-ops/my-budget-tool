@@ -43,6 +43,8 @@
   .cc-grid { grid-template-columns: 30px 1fr 50px 70px 70px 70px 50px 80px 80px 30px; }
   .extra-grid { grid-template-columns: 30px 1fr 100px 30px; }
 
+  .section-footer { border-top: 1px solid var(--border); padding: 10px 18px; background: var(--surface2); text-align: right; font-size: 12px; font-weight: bold; color: var(--accent); }
+
   .col-head { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
   input:not([type="checkbox"]):not([type="radio"]) { width: 100%; height: 34px; padding: 0 4px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 10px; }
   
@@ -89,6 +91,7 @@
         <div class="col-heads sub-grid"><span></span><span class="col-head">Provider</span><span class="col-head">Due Date</span><span class="col-head">Amount</span></div>
         <div id="subRows"></div>
       </div>
+      <div class="section-footer">Total Subscriptions: <span id="subTotal">$0.00</span></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Fixed Bills</span></div>
@@ -96,6 +99,7 @@
         <div class="col-heads bill-grid"><span></span><span class="col-head">Bill Name</span><span class="col-head">Due Date</span><span class="col-head">Amount</span></div>
         <div id="billRows"></div>
       </div>
+      <div class="section-footer">Total Fixed Bills: <span id="billTotal">$0.00</span></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Savings Goals</span><button class="add-btn" onclick="addRow('saveRows')">+</button></div>
@@ -103,6 +107,7 @@
         <div class="col-heads save-grid"><span class="col-head">Goal</span><span class="col-head">Progress</span><span class="col-head">Target</span><span class="col-head">Current</span><span class="col-head">Deposit</span><span class="col-head">Withdraw</span></div>
         <div id="saveRows"></div>
       </div>
+      <div class="section-footer">Monthly Savings Contribution: <span id="saveTotal">$0.00</span></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Credit Cards</span><button class="add-btn" onclick="addRow('ccRows')">+</button></div>
@@ -110,6 +115,7 @@
         <div class="col-heads cc-grid"><span></span><span class="col-head">Card</span><span class="col-head">Util%</span><span class="col-head">Limit</span><span class="col-head">Balance</span><span class="col-head">Spent</span><span class="col-head">APR%</span><span class="col-head">Payment</span><span class="col-head">Date</span></div>
         <div id="ccRows"></div>
       </div>
+      <div class="section-footer">Total Card Payments: <span id="ccTotal">$0.00</span></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">Extra Spending</span><button class="add-btn" onclick="addRow('extraRows')">+</button></div>
@@ -117,6 +123,7 @@
         <div class="col-heads extra-grid"><span></span><span class="col-head">Item</span><span class="col-head">Amount</span></div>
         <div id="extraRows"></div>
       </div>
+      <div class="section-footer">Total Extra Spending: <span id="extraTotal">$0.00</span></div>
     </div>
   </div>
 
@@ -139,11 +146,15 @@
           </div>
         </div>
         <div class="metric-block">
+            <div class="col-head">Rollover from Prev. Month</div>
+            <input type="number" id="rolloverInput" oninput="recalc()" style="font-size: 16px; margin-top: 5px;">
+        </div>
+        <div class="metric-block">
           <div class="col-head">Safety Buffer (5%)</div>
           <div class="metric-value" id="bufferAmt" style="font-size: 20px; color: var(--muted);">$0.00</div>
         </div>
         <div class="metric-block">
-          <div class="col-head">Remaining After Buffer</div>
+          <div class="col-head">Final Remaining Balance</div>
           <div class="metric-value" id="balanceText">$0.00</div>
         </div>
       </div>
@@ -222,19 +233,37 @@ function addRow(id, data = null) {
   recalc();
 }
 
+function sumSection(selector) {
+    let sum = 0;
+    document.querySelectorAll(selector + ' .a-in').forEach(i => sum += parseFloat(i.value) || 0);
+    return sum;
+}
+
 function recalc() {
-  let totalOut = 0;
-  document.querySelectorAll('.a-in').forEach(i => totalOut += parseFloat(i.value) || 0);
+  const sTotal = sumSection('#subRows');
+  const bTotal = sumSection('#billRows');
+  const saTotal = sumSection('#saveRows');
+  const cTotal = sumSection('#ccRows');
+  const eTotal = sumSection('#extraRows');
+
+  document.getElementById('subTotal').textContent = '$' + sTotal.toFixed(2);
+  document.getElementById('billTotal').textContent = '$' + bTotal.toFixed(2);
+  document.getElementById('saveTotal').textContent = '$' + saTotal.toFixed(2);
+  document.getElementById('ccTotal').textContent = '$' + cTotal.toFixed(2);
+  document.getElementById('extraTotal').textContent = '$' + eTotal.toFixed(2);
+
+  const totalOut = sTotal + bTotal + saTotal + cTotal + eTotal;
   const checkAmt = parseFloat(document.getElementById('incomeInput').value) || 0;
+  const rollover = parseFloat(document.getElementById('rolloverInput').value) || 0;
   const multiplier = parseInt(document.querySelector('input[name="freq"]:checked').value);
   const monthlyInc = checkAmt * multiplier;
   const buffer = monthlyInc * 0.05;
   
-  const usagePct = monthlyInc > 0 ? Math.min(Math.round((totalOut / monthlyInc) * 100), 100) : 0;
+  const usagePct = monthlyInc > 0 ? Math.min(Math.round((totalOut / (monthlyInc + rollover)) * 100), 100) : 0;
   document.getElementById('budgetBar').style.width = usagePct + '%';
   document.getElementById('usageText').textContent = usagePct + '% used';
   document.getElementById('bufferAmt').textContent = '$' + buffer.toFixed(2);
-  document.getElementById('balanceText').textContent = '$' + (monthlyInc - totalOut - buffer).toFixed(2);
+  document.getElementById('balanceText').textContent = '$' + (monthlyInc + rollover - totalOut - buffer).toFixed(2);
   
   const today = new Date().toISOString().split('T')[0];
   document.querySelectorAll('.data-row').forEach(r => {
@@ -282,7 +311,18 @@ function loadMonth() {
     let pM = curM - 1, pY = curY; if (pM < 0) { pM = 11; pY--; }
     const prev = JSON.parse(localStorage.getItem(`budget_${pY}_${pM}`) || '{}');
     if (Object.keys(prev).length > 0) {
-      saved = { inc: prev.inc, freq: prev.freq,
+      // Calculate previous month's final balance to set rollover
+      const pTotalOut = (prev.subs||[]).reduce((a,b)=>a+(parseFloat(b.a)||0),0) + 
+                        (prev.bills||[]).reduce((a,b)=>a+(parseFloat(b.a)||0),0) + 
+                        (prev.saves||[]).reduce((a,b)=>a+(parseFloat(b.a)||0),0) + 
+                        (prev.ccs||[]).reduce((a,b)=>a+(parseFloat(b.a)||0),0) + 
+                        (prev.extras||[]).reduce((a,b)=>a+(parseFloat(b.a)||0),0);
+      const pMonthlyInc = (parseFloat(prev.inc)||0) * (parseInt(prev.freq)||1);
+      const pRollover = parseFloat(prev.roll)||0;
+      const pBuffer = pMonthlyInc * 0.05;
+      const finalRemaining = (pMonthlyInc + pRollover - pTotalOut - pBuffer).toFixed(2);
+
+      saved = { inc: prev.inc, freq: prev.freq, roll: finalRemaining,
         subs: (prev.subs||[]).map(s=>({ n: s.n, a: s.a, p: false, d: rolloverDate(s.d, curY, curM) })),
         saves: (prev.saves||[]).map(s=>({ n: s.n, t: s.t, s: (parseFloat(s.s)||0) + (parseFloat(s.a)||0) - (parseFloat(s.w)||0), a: '', w: '' })),
         ccs: (prev.ccs||[]).map(c=>{
@@ -297,6 +337,7 @@ function loadMonth() {
     }
   }
   document.getElementById('incomeInput').value = saved.inc || '';
+  document.getElementById('rolloverInput').value = saved.roll || '';
   if (saved.freq) document.querySelector(`input[name="freq"][value="${saved.freq}"]`).checked = true;
   
   const bR = document.getElementById('billRows'); bR.innerHTML = '';
@@ -321,6 +362,7 @@ function loadMonth() {
 function saveData() {
   const data = {
     inc: document.getElementById('incomeInput').value,
+    roll: document.getElementById('rolloverInput').value,
     freq: document.querySelector('input[name="freq"]:checked').value,
     subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value})),
     saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r=>({n:r.querySelector('input[type="text"]').value, t:r.querySelector('.tar-in').value, s:r.querySelector('.start-in').value, a:r.querySelector('.a-in').value, w:r.querySelector('.withdraw-in').value})),
