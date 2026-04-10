@@ -25,7 +25,11 @@
   .month-nav button { background: none; border: none; cursor: pointer; padding: 8px 14px; font-size: 16px; }
   .month-label { font-family: 'DM Serif Display', serif; padding: 8px 20px; min-width: 160px; text-align: center; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
 
-  .main-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; }
+  .main-layout { display: grid; grid-template-columns: 1.6fr 1fr; gap: 1.5rem; padding: 1.5rem 2rem; max-width: 1400px; margin: 0 auto; align-items: start; }
+  
+  /* Sticky Summary Logic */
+  .right-col { position: sticky; top: 80px; }
+
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 1.25rem; }
   .card-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: var(--surface2); border-bottom: 1px solid var(--border); }
   .card-title { font-family: 'DM Serif Display', serif; font-size: 16px; }
@@ -213,7 +217,25 @@ function recalc() {
 
 function loadMonth() {
   document.getElementById('monthLabel').textContent = `${MONTHS[curM]} ${curY}`;
-  const saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
+  let saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
+  
+  if (Object.keys(saved).length === 0) {
+    let prevM = curM - 1;
+    let prevY = curY;
+    if (prevM < 0) { prevM = 11; prevY--; }
+    const prevSaved = JSON.parse(localStorage.getItem(`budget_${prevY}_${prevM}`) || '{}');
+    
+    if (Object.keys(prevSaved).length > 0) {
+      saved = {
+        inc: prevSaved.inc,
+        subs: (prevSaved.subs || []).map(s => ({...s, p: false, d: ""})),
+        saves: (prevSaved.saves || []).map(s => ({...s, a: ""})),
+        ccs: (prevSaved.ccs || []).map(c => ({...c, p: false, a: "", d: ""})),
+        bills: (prevSaved.bills || []).map(b => ({...b, p: false, d: ""}))
+      };
+    }
+  }
+
   document.getElementById('incomeInput').value = saved.inc || '';
   
   const bR = document.getElementById('billRows'); bR.innerHTML = '';
@@ -228,12 +250,14 @@ function loadMonth() {
   });
 
   ['subRows', 'saveRows', 'ccRows'].forEach(id => {
-    document.getElementById(id).innerHTML = '';
+    const container = document.getElementById(id);
+    container.innerHTML = '';
     const list = id === 'subRows' ? saved.subs : (id === 'saveRows' ? saved.saves : saved.ccs);
-    if (list && list.length) {
-       list.forEach(item => addRow(id, item));
+    
+    if (list && list.length > 0) {
+      list.forEach(item => addRow(id, item));
     } else {
-       addRow(id); // Always start with 1 clean row if empty
+      addRow(id);
     }
   });
   recalc();
@@ -273,7 +297,12 @@ function saveData() {
   alert('Dashboard Saved!');
 }
 
-function changeMonth(v) { curM += v; if (curM>11){curM=0;curY++} if (curM<0){curM=11;curY--} loadMonth(); }
+function changeMonth(v) { 
+  curM += v; 
+  if (curM > 11) { curM = 0; curY++; } 
+  if (curM < 0) { curM = 11; curY--; } 
+  loadMonth(); 
+}
 init();
 </script>
 </body>
