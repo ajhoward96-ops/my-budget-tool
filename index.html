@@ -37,7 +37,6 @@
   .table-wrap { padding: 12px 18px; }
   .col-heads, .data-row { display: grid; gap: 8px; align-items: center; margin-bottom: 8px; border-radius: 4px; transition: all 0.3s; padding: 4px; }
   
-  /* Grid Layouts */
   .sub-grid { grid-template-columns: 30px 1fr 120px 100px 30px; }
   .bill-grid { grid-template-columns: 30px 1fr 120px 100px; }
   .save-grid { grid-template-columns: 1fr 60px 80px 80px 80px 80px 30px; }
@@ -46,14 +45,13 @@
   .col-head { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--muted); letter-spacing: 0.5px; }
   input:not([type="checkbox"]):not([type="radio"]) { width: 100%; height: 34px; padding: 0 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 11px; }
   
-  /* Statuses */
   .paid:not(.save-grid) { opacity: 0.6; }
   .paid:not(.save-grid) input { text-decoration: line-through; }
   .overdue { background: var(--warning-bg) !important; border: 1px solid #ffcccc; }
   .goal-met { background: var(--accent-light) !important; border: 1px solid var(--accent); }
 
   .remove-row { color: var(--danger); cursor: pointer; background: none; border: none; font-size: 20px; font-weight: bold; }
-  .pay-full-btn { background: #e2ddd7; border: none; font-size: 8px; padding: 3px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+  .pay-full-btn { background: #e2ddd7; border: none; font-size: 8px; padding: 3px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 2px; }
 
   .progress-container { background: #eee; border-radius: 10px; height: 12px; margin: 10px 0; overflow: hidden; }
   .progress-bar { background: var(--accent); height: 100%; transition: width 0.5s ease; }
@@ -91,7 +89,6 @@
         <div id="subRows"></div>
       </div>
     </div>
-
     <div class="card">
       <div class="card-header"><span class="card-title">Fixed Bills</span></div>
       <div class="table-wrap">
@@ -99,7 +96,6 @@
         <div id="billRows"></div>
       </div>
     </div>
-
     <div class="card">
       <div class="card-header"><span class="card-title">Savings Goals</span><button class="add-btn" onclick="addRow('saveRows')">+</button></div>
       <div class="table-wrap">
@@ -107,7 +103,6 @@
         <div id="saveRows"></div>
       </div>
     </div>
-
     <div class="card">
       <div class="card-header"><span class="card-title">Credit Cards</span><button class="add-btn" onclick="addRow('ccRows')">+</button></div>
       <div class="table-wrap">
@@ -126,7 +121,6 @@
           <div class="progress-container"><div class="progress-bar" id="budgetBar" style="width: 0%"></div></div>
           <div id="usageText" style="font-size: 11px; font-weight: bold;">0% used</div>
         </div>
-        
         <div class="metric-block">
           <div class="col-head">Check Amount</div>
           <input type="number" id="incomeInput" oninput="recalc()" style="font-size: 20px; height: 45px; margin-top: 5px;">
@@ -136,12 +130,10 @@
             <label class="radio-option"><input type="radio" name="freq" value="4" onchange="recalc()"> Weekly</label>
           </div>
         </div>
-
         <div class="metric-block">
           <div class="col-head">Safety Buffer (5%)</div>
           <div class="metric-value" id="bufferAmt" style="font-size: 20px; color: var(--muted);">$0.00</div>
         </div>
-
         <div class="metric-block">
           <div class="col-head">Remaining After Buffer</div>
           <div class="metric-value" id="balanceText">$0.00</div>
@@ -163,7 +155,9 @@ function init() {
 
 function payFull(btn) {
   const row = btn.closest('.data-row');
-  row.querySelector('.bal-in').value = row.querySelector('.lim-in').value; // Pay to limit logic if needed, but usually balance
+  const bal = parseFloat(row.querySelector('.bal-in').value) || 0;
+  row.querySelector('.a-in').value = bal;
+  row.querySelector('input[type="checkbox"]').checked = true;
   recalc();
 }
 
@@ -184,7 +178,7 @@ function addRow(id, data = null) {
       <input type="number" class="tar-in" placeholder="Target" oninput="recalc()" value="${data?.t||''}">
       <input type="number" class="start-in" placeholder="Current" oninput="recalc()" value="${data?.s||''}">
       <input type="number" class="a-in" placeholder="Deposit" oninput="recalc()" value="${data?.a||''}">
-      <input type="number" class="withdraw-in" placeholder="Life Happens" oninput="recalc()" value="${data?.w||''}">
+      <input type="number" class="withdraw-in" placeholder="Withdraw" oninput="recalc()" value="${data?.w||''}">
       <button class="remove-row" onclick="this.parentElement.remove();recalc()">×</button>`;
   } else if (id === 'ccRows') {
     row.innerHTML = `<input type="checkbox" onchange="recalc()" ${data?.p?'checked':''}>
@@ -192,7 +186,7 @@ function addRow(id, data = null) {
       <span class="util-badge">0%</span>
       <input type="number" class="lim-in" placeholder="Limit" oninput="recalc()" value="${data?.l||''}">
       <input type="number" class="bal-in" placeholder="Balance" oninput="recalc()" value="${data?.b||''}">
-      <input type="number" placeholder="%" value="${data?.i||''}">
+      <input type="number" class="int-in" placeholder="APR%" value="${data?.i||''}" oninput="recalc()">
       <div style="display:flex;flex-direction:column;">
         <input type="number" class="a-in" placeholder="Pay" oninput="recalc()" value="${data?.a||''}">
         <button class="pay-full-btn" onclick="payFull(this)">Pay Full</button>
@@ -228,13 +222,11 @@ function recalc() {
       r.classList.toggle('paid', cb?.checked);
       r.classList.toggle('overdue', dt && dt < today && !cb?.checked);
     } else {
-      // Savings Calculation
       const tar = parseFloat(r.querySelector('.tar-in')?.value) || 0;
       const start = parseFloat(r.querySelector('.start-in')?.value) || 0;
       const dep = parseFloat(r.querySelector('.a-in')?.value) || 0;
       const wdr = parseFloat(r.querySelector('.withdraw-in')?.value) || 0;
       const svB = r.querySelector('.save-badge');
-      
       if (svB && tar > 0) {
         const netTotal = (start + dep) - wdr;
         const prog = Math.round((netTotal / tar) * 100);
@@ -244,7 +236,6 @@ function recalc() {
       }
     }
     
-    // Credit Card Util
     const lim = parseFloat(r.querySelector('.lim-in')?.value) || 0;
     const bal = parseFloat(r.querySelector('.bal-in')?.value) || 0;
     if (r.querySelector('.util-badge') && lim > 0) {
@@ -257,14 +248,30 @@ function recalc() {
 function loadMonth() {
   document.getElementById('monthLabel').textContent = `${MONTHS[curM]} ${curY}`;
   let saved = JSON.parse(localStorage.getItem(`budget_${curY}_${curM}`) || '{}');
+  
   if (Object.keys(saved).length === 0) {
     let pM = curM - 1, pY = curY; if (pM < 0) { pM = 11; pY--; }
     const prev = JSON.parse(localStorage.getItem(`budget_${pY}_${pM}`) || '{}');
     if (Object.keys(prev).length > 0) {
       saved = { inc: prev.inc, freq: prev.freq,
         subs: (prev.subs||[]).map(s=>({...s, p:false, d:''})),
-        saves: (prev.saves||[]).map(s=>({...s, a:'', w:''})),
-        ccs: (prev.ccs||[]).map(c=>({...c, p:false, a:'', d:''})),
+        saves: (prev.saves||[]).map(s=>({
+          n: s.n, t: s.t,
+          s: (parseFloat(s.s)||0) + (parseFloat(s.a)||0) - (parseFloat(s.w)||0),
+          a: '', w: '' 
+        })),
+        ccs: (prev.ccs||[]).map(c=>{
+          const oldBal = parseFloat(c.b) || 0;
+          const paid = parseFloat(c.a) || 0;
+          const apr = (parseFloat(c.i) || 0) / 100;
+          const monthlyInt = (oldBal * apr) / 12;
+          const newBal = (oldBal + monthlyInt) - paid;
+          return {
+            n: c.n, l: c.l, i: c.i,
+            b: Math.max(0, newBal).toFixed(2),
+            p: false, a: '', d: ''
+          }
+        }),
         bills: (prev.bills||[]).map(b=>({...b, p:false, d:''}))
       };
     }
@@ -297,11 +304,11 @@ function saveData() {
     freq: document.querySelector('input[name="freq"]:checked').value,
     subs: Array.from(document.querySelectorAll('#subRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value})),
     saves: Array.from(document.querySelectorAll('#saveRows .data-row')).map(r=>({n:r.querySelector('input[type="text"]').value, t:r.querySelector('.tar-in').value, s:r.querySelector('.start-in').value, a:r.querySelector('.a-in').value, w:r.querySelector('.withdraw-in').value})),
-    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, l:r.querySelector('.lim-in').value, b:r.querySelector('.bal-in').value, i:r.querySelector('input[placeholder="%"]').value, a:r.querySelector('.a-in').value, d:r.querySelector('.date-in').value})),
+    ccs: Array.from(document.querySelectorAll('#ccRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, n:r.querySelector('input[type="text"]').value, l:r.querySelector('.lim-in').value, b:r.querySelector('.bal-in').value, i:r.querySelector('.int-in').value, a:r.querySelector('.a-in').value, d:r.querySelector('.date-in').value})),
     bills: Array.from(document.querySelectorAll('#billRows .data-row')).map(r=>({p:r.querySelector('input[type="checkbox"]').checked, d:r.querySelector('.date-in').value, a:r.querySelector('.a-in').value}))
   };
   localStorage.setItem(`budget_${curY}_${curM}`, JSON.stringify(data));
-  alert('Committed to Memory!');
+  alert('Committed!');
 }
 
 function changeMonth(v) { curM += v; if (curM > 11) { curM=0; curY++; } if (curM < 0) { curM=11; curY--; } loadMonth(); }
